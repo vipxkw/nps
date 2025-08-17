@@ -1043,7 +1043,7 @@ func GetDashboardData(force bool) map[string]interface{} {
 	})
 	data["clientOnlineCount"] = c
 	data["inletFlowCount"] = int(in)
-	data["exportFlowCount"] = int(out)
+	data["exportFlowCount"] = int out
 	var tcp, udp, secret, socks5, p2p, http int
 	file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
 		switch value.(*file.Tunnel).Mode {
@@ -1100,6 +1100,8 @@ func GetDashboardData(force bool) map[string]interface{} {
 		return true
 	})
 	data["tcpCount"] = tcpCount
+	
+	// ====== 修复开始：将所有误用 cached 的地方改为 data ======
 	cpuPercent, err := cpu.Percent(0, true)
 	if err == nil {
 		var cpuAll float64
@@ -1108,33 +1110,35 @@ func GetDashboardData(force bool) map[string]interface{} {
 		}
 		cpl := len(cpuPercent)
 		if cpl > 0 {
-			cached["cpu"] = math.Round(cpuAll / float64(cpl))
+			data["cpu"] = math.Round(cpuAll / float64(cpl)) // 修复：使用 data 而非 cached
 		}
 	}
 	loads, err := load.Avg()
 	if err == nil {
-		data["load"] = loads.String()
+		data["load"] = loads.String() // 修复：使用 data
 	}
 	swap, err := mem.SwapMemory()
 	if err == nil {
-		data["swap_mem"] = math.Round(swap.UsedPercent)
+		data["swap_mem"] = math.Round(swap.UsedPercent) // 修复：使用 data
 	}
 	vir, err := mem.VirtualMemory()
 	if err == nil {
-		data["virtual_mem"] = math.Round(vir.UsedPercent)
+		data["virtual_mem"] = math.Round(vir.UsedPercent) // 修复：使用 data
 	}
 	conn, err := net.ProtoCounters(nil)
 	if err == nil {
 		for _, v := range conn {
-			data[v.Protocol] = v.Stats["CurrEstab"]
+			data[v.Protocol] = v.Stats["CurrEstab"] // 修复：使用 data
 		}
 	}
 	if v, ok := ioSendRate.Load().(float64); ok {
-		data["io_send"] = v
+		data["io_send"] = v // 修复：使用 data
 	}
 	if v, ok := ioRecvRate.Load().(float64); ok {
-		data["io_recv"] = v
+		data["io_recv"] = v // 修复：使用 data
 	}
+	// ====== 修复结束 ======
+	
 	//chart
 	var fg int
 	if len(tool.ServerStatus) >= 10 {
@@ -1143,11 +1147,11 @@ func GetDashboardData(force bool) map[string]interface{} {
 			data["sys"+strconv.Itoa(i+1)] = tool.ServerStatus[i*fg]
 		}
 	}
-	cacheMu.RLock()
+	cacheMu.Lock()
 	dashboardCache = data
 	lastRefresh = time.Now()
 	lastFullRefresh = time.Now()
-	cacheMu.RUnlock()
+	cacheMu.Unlock()
 	return data
 }
 
