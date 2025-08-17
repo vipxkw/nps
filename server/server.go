@@ -1043,7 +1043,7 @@ func GetDashboardData(force bool) map[string]interface{} {
 	})
 	data["clientOnlineCount"] = c
 	data["inletFlowCount"] = int(in)
-	data["exportFlowCount"] = int out
+	data["exportFlowCount"] = int(out)
 	var tcp, udp, secret, socks5, p2p, http int
 	file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
 		switch value.(*file.Tunnel).Mode {
